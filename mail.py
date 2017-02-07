@@ -13,6 +13,8 @@ EMAIL_ACCOUNT = settings.get('DEFAULT', 'EMAIL_ACCOUNT')
 PASSWORD = settings.get('DEFAULT', 'PASSWORD')
 TOADDR = settings.get('DEFAULT', 'TOADDR')
 
+if EMAIL_ACCOUNT == '' or PASSWORD == '' or TOADDR =='':
+    exit('Wrong settings')
 
 mail_smtp = smtplib.SMTP('smtp.gmail.com:587')
 
@@ -27,7 +29,7 @@ mail_imap.list()
 mail_imap.select('inbox')
 result, data = mail_imap.uid('search', None, "UNSEEN") # (ALL/UNSEEN)
 
-if len(data) == 0:
+if len(data[0]) == 0:
     exit("Not unseen mails")
 
 for email_uid in data[0].split():
