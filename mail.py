@@ -4,6 +4,7 @@ import imaplib
 import smtplib
 import configparser
 
+from time import sleep
 from email.mime.text import MIMEText
 
 settings = configparser.ConfigParser()
@@ -17,10 +18,8 @@ if EMAIL_ACCOUNT == '' or PASSWORD == '' or TOADDR =='':
     exit('Wrong settings')
 
 mail_smtp = smtplib.SMTP('smtp.gmail.com:587')
-
 mail_smtp.starttls()
-mail_smtp.ehlo()
-
+mail_smtp.ehlo('ehlo')
 mail_smtp.login(EMAIL_ACCOUNT,PASSWORD)
 
 mail_imap = imaplib.IMAP4_SSL('imap.gmail.com')
@@ -55,7 +54,6 @@ for email_uid in data[0].split():
         sender = email_from
 
     # Body details
-    try:
         for part in email_message.walk():
             if part.get_content_type() == "text/plain":
 
@@ -72,12 +70,25 @@ for email_uid in data[0].split():
                     msg['Subject'] = "New redirect email  {0}".format(subject)
                     msg['From'] = EMAIL_ACCOUNT
                     msg['To'] = TOADDR
-                    helo = mail_smtp.helo()
+
+                    try:
+                        mail_smtp.helo('helo')
+
+                    except smtplib.SMTPServerDisconnected:
+                        sleep(30)
+                        mail_smtp = smtplib.SMTP('smtp.gmail.com:587')
+                        mail_smtp.starttls()
+                        mail_smtp.ehlo('ehlo')
+                        mail_smtp.login(EMAIL_ACCOUNT, PASSWORD)
+                        mail_smtp.helo('helo')
+
+                    except Exception as e:
+                        print("Unexpected error: ", e)
+                        raise
+
                     mail_smtp.send_message(msg=msg,from_addr=EMAIL_ACCOUNT,to_addrs=TOADDR)
 
-    except Exception as e:
-        raise e
+mail_smtp.quit()
 
-    finally:
-        mail_smtp.quit()
+
 
