@@ -2,12 +2,17 @@ import datetime
 import email
 import imaplib
 import smtplib
+import configparser
 
 from email.mime.text import MIMEText
 
-EMAIL_ACCOUNT = ""
-PASSWORD = ""
-TOADDR = ''
+settings = configparser.ConfigParser()
+settings.read('settings.ini', encoding='utf-8')
+
+EMAIL_ACCOUNT = settings.get('DEFAULT', 'EMAIL_ACCOUNT')
+PASSWORD = settings.get('DEFAULT', 'PASSWORD')
+TOADDR = settings.get('DEFAULT', 'TOADDR')
+
 
 mail_smtp = smtplib.SMTP('smtp.gmail.com:587')
 
@@ -21,6 +26,9 @@ mail_imap.login(EMAIL_ACCOUNT, PASSWORD)
 mail_imap.list()
 mail_imap.select('inbox')
 result, data = mail_imap.uid('search', None, "UNSEEN") # (ALL/UNSEEN)
+
+if len(data) == 0:
+    exit("Not unseen mails")
 
 for email_uid in data[0].split():
 
@@ -45,25 +53,29 @@ for email_uid in data[0].split():
         sender = email_from
 
     # Body details
-    for part in email_message.walk():
+    try:
+        for part in email_message.walk():
+            if part.get_content_type() == "text/plain":
 
-        if part.get_content_type() == "text/plain":
-            body = part.get_payload(decode=True)
+                    body = part.get_payload(decode=True)
 
-            message = "From: {0}\nSender: {1}\nTo: {2}\nDate: {3}\nSubject: {4}\nBody: \n{5}\n".format(email_from,
-                                                                                                       sender,
-                                                                                                       email_to,
-                                                                                                       local_message_date,
-                                                                                                       subject,
-                                                                                                       body.decode('utf-8', errors='ignore'))
-            msg = MIMEText(message)
+                    message = "From: {0}\nSender: {1}\nTo: {2}\nDate: {3}\nSubject: {4}\nBody: \n{5}\n".format(email_from,
+                                                                                                               sender,
+                                                                                                               email_to,
+                                                                                                               local_message_date,
+                                                                                                               subject,
+                                                                                                               body.decode('utf-8', errors='ignore'))
+                    msg = MIMEText(message)
 
-            msg['Subject'] = "New redirect email  {0}".format(subject)
-            msg['From'] = EMAIL_ACCOUNT
-            msg['To'] = TOADDR
-            helo = mail_smtp.helo()
-            mail_smtp.send_message(msg=msg,from_addr=EMAIL_ACCOUNT,to_addrs=TOADDR)
-            mail_smtp.quit()
-            exit()
-        else:
-            continue
+                    msg['Subject'] = "New redirect email  {0}".format(subject)
+                    msg['From'] = EMAIL_ACCOUNT
+                    msg['To'] = TOADDR
+                    helo = mail_smtp.helo()
+                    mail_smtp.send_message(msg=msg,from_addr=EMAIL_ACCOUNT,to_addrs=TOADDR)
+
+    except Exception as e:
+        raise e
+
+    finally:
+        mail_smtp.quit()
+
