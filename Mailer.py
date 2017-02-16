@@ -8,28 +8,62 @@ from email.mime.text import MIMEText
 
 class Mailer():
     def __init__(self, account, passwd, toaddr):
+        print('inicialise')
         self.account = account
         self.passwd = passwd
         self.toaddr = toaddr
         self.smtp = smtplib.SMTP('smtp.gmail.com:587')
         self.imap = imaplib.IMAP4_SSL('imap.gmail.com')
+        self.uids = self.check_mail_box()
+
+    def __new__(cls, account, passwd, toaddr):
+
+        if account == '' or passwd == '' or toaddr == '':
+            raise ValueError("One or more parametrs empty")
+
+        if not '@' in account:
+            raise ValueError("in account not symbol @!")
+
+        print('create object')
+        return super(Mailer, cls).__new__(cls)
 
     def connect_smtp(self):
+        self.smtp = smtplib.SMTP('smtp.gmail.com:587')
         self.smtp.starttls()
         self.smtp.ehlo('ehlo')
-        self.smtp.login(self.account, self.passwd)
+        try:
+            self.smtp.login(self.account, self.passwd)
+        except smtplib.SMTPAuthenticationError as e:
+            print("Auth error: ", e)
+            return False
+        except smtplib.SMTPServerDisconnected as e:
+            print("Disconect serv: ", e)
+            return False
+        except Exception as e:
+            print("Unexpected error: ", e)
+            return False
         self.smtp.helo('helo')
+        return True
 
     def check_mail_box(self):
-        self.imap.login(self.account, self.passwd)
-        self.imap.list()
-        self.imap.select('inbox')
-        result, uids = self.imap.uid('search', None, "UNSEEN")  # (ALL/UNSEEN)
+        connected = self.connect_smtp()
+        if connected:
+            try:
+                self.imap.login(self.account, self.passwd)
+            except Exception as e:
+                print(e)
+                return False
+            self.imap.list()
+            self.imap.select('inbox')
+            result, uids = self.imap.uid('search', None, "UNSEEN")  # (ALL/UNSEEN)
 
-        return uids[0]
+            return uids[0].split()
+        else:
+            return False
+
 
     def get_email_data(self, uid):
-        result, email_data = self.imap.uid('fetch', uid, '(RFC822)')
+        result, email_data = self.imap.uid('fetch', bytes(uid), '(RFC822)')
         raw_email = email_data[0][1]
         raw_email_string = raw_email.decode('utf-8')
         email_message = email.message_from_string(raw_email_string)
@@ -75,7 +109,6 @@ class Mailer():
 
         try:
             self.smtp.helo('helo')
-
         except smtplib.SMTPServerDisconnected:
             sleep(30)
             self.connect_smtp()
@@ -87,10 +120,9 @@ class Mailer():
         self.smtp.send_message(msg=msg, from_addr=self.account, to_addrs=self.toaddr)
 
     def run(self):
-        uids = self.check_mail_box()
-        if len(uids) == 0:
+        if len(self.uids) == 0:
             return "Not unseen emails"
-        for f in uids:
+        for f in self.uids:
             data = self.get_email_data(f)
             header = self.get_email_header_details(data)
             self.get_body_and_send(data,header)
@@ -101,4 +133,4 @@ class Mailer():
 
 if __name__ == '__main__':
     m = Mailer("", "", "")
-    m.run()
+    #m.connect_smtp()
