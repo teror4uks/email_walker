@@ -4,6 +4,16 @@ import email
 import datetime
 from time import sleep
 from email.mime.text import MIMEText
+import xml.etree.ElementTree as ET
+
+
+class MailerSettings():
+    def __init__(self, config):
+        self.tree = ET.parse(config)
+        self.root = self.tree.getroot()
+        self.acc = self.root.find('account').text
+        self.passwd = self.root.find('password').text
+        self.to = self.root.find('to').text
 
 
 class Mailer():
@@ -132,5 +142,7 @@ class Mailer():
         self.smtp.close()
 
 if __name__ == '__main__':
-    m = Mailer("", "", "")
+    #m = Mailer("", "", "")
     #m.connect_smtp()
+
+    c = MailerSettings("config.xml")

@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<config>
+    <account>acc</account>
+    <password>123</password>
+    <to>toaddr</to>
+</config>
