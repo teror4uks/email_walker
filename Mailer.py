@@ -146,7 +146,7 @@ class Mailer(MailerSettings):
             raise BaseException("imap or smtp servers return error")
         if len(self.uids) == 0:
             logger.warning("Not unseen emails")
-            return "Not unseen emails"
+            return 0
         for f in self.uids:
             data = self.get_email_data(f)
             header = self.get_email_header_details(data)
