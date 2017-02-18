@@ -21,7 +21,6 @@ class MailerSettings():
         self.passwd = self.root.find('password').text
         self.to = self.root.find('to').text
 
-
 class Mailer(MailerSettings):
     def __init__(self, config):
         MailerSettings.__init__(self, config)
@@ -29,15 +28,24 @@ class Mailer(MailerSettings):
         self.account = self.acc
         self.passwd = self.passwd
         self.toaddr = self.to
-        if self.account == None or self.passwd == None or self.to == None:
-            logger.error("One or more parametrs empty")
-        if not '@' in self.account:
-            logger.error("in account not symbol @")
-        if self.account == self.to:
-            logger.error("Account and to address equals")
         self.smtp = smtplib.SMTP('smtp.gmail.com:587')
         self.imap = imaplib.IMAP4_SSL('imap.gmail.com')
         self.uids = self.check_mail_box()
+
+    def __new__(cls, config):
+        tree = ET.parse(config)
+        root = tree.getroot()
+        acc = root.find('account').text
+        passwd = root.find('password').text
+        to = root.find('to').text
+        if acc == None or passwd == None or to == None:
+            raise ValueError("One or more parametrs empty")
+        if not '@' in acc or not '@' in to:
+            raise ValueError("in account not symbol @")
+        if acc == to:
+            raise ValueError("Account and to address equals")
+
+        return super(Mailer, cls).__new__(cls)
 
     def connect_smtp(self):
         self.smtp = smtplib.SMTP('smtp.gmail.com:587')
