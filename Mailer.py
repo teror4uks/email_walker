@@ -30,9 +30,11 @@ class Mailer(MailerSettings):
         self.passwd = self.passwd
         self.toaddr = self.to
         if self.account == None or self.passwd == None or self.to == None:
-            raise ValueError("One or more parametrs empty")
+            logger.error("One or more parametrs empty")
         if not '@' in self.account:
-            raise ValueError("in account not symbol @")
+            logger.error("in account not symbol @")
+        if self.account == self.to:
+            logger.error("Account and to address equals")
         self.smtp = smtplib.SMTP('smtp.gmail.com:587')
         self.imap = imaplib.IMAP4_SSL('imap.gmail.com')
         self.uids = self.check_mail_box()
