@@ -2,9 +2,15 @@ import smtplib
 import imaplib
 import email
 import datetime
+import logging
+import os
 from time import sleep
 from email.mime.text import MIMEText
 import xml.etree.ElementTree as ET
+
+path_to_mail_log = os.path.dirname(os.path.abspath(__file__))
+logging.basicConfig(filename=path_to_mail_log+os.sep+'mailer.log', format='%(asctime)s - %(levelname)s:%(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class MailerSettings():
@@ -16,26 +22,20 @@ class MailerSettings():
         self.to = self.root.find('to').text
 
 
-class Mailer():
-    def __init__(self, account, passwd, toaddr):
-        print('inicialise')
-        self.account = account
-        self.passwd = passwd
-        self.toaddr = toaddr
+class Mailer(MailerSettings):
+    def __init__(self, config):
+        MailerSettings.__init__(self, config)
+        logger.info('initialise object')
+        self.account = self.acc
+        self.passwd = self.passwd
+        self.toaddr = self.to
+        if self.account == None or self.passwd == None or self.to == None:
+            raise ValueError("One or more parametrs empty")
+        if not '@' in self.account:
+            raise ValueError("in account not symbol @")
         self.smtp = smtplib.SMTP('smtp.gmail.com:587')
         self.imap = imaplib.IMAP4_SSL('imap.gmail.com')
         self.uids = self.check_mail_box()
-
-    def __new__(cls, account, passwd, toaddr):
-
-        if account == '' or passwd == '' or toaddr == '':
-            raise ValueError("One or more parametrs empty")
-
-        if not '@' in account:
-            raise ValueError("in account not symbol @!")
-
-        print('create object')
-        return super(Mailer, cls).__new__(cls)
 
     def connect_smtp(self):
         self.smtp = smtplib.SMTP('smtp.gmail.com:587')
@@ -44,13 +44,13 @@ class Mailer():
         try:
             self.smtp.login(self.account, self.passwd)
         except smtplib.SMTPAuthenticationError as e:
-            print("Auth error: ", e)
+            logger.error("Auth error: " + str(e.args[1]))
             return False
         except smtplib.SMTPServerDisconnected as e:
-            print("Disconect serv: ", e)
+            logger.error("Disconect serv: " + str(e.args[1]))
             return False
         except Exception as e:
-            print("Unexpected error: ", e)
+            logger.error("Unexpected error: ", str(e.args[1]))
             return False
         self.smtp.helo('helo')
         return True
@@ -61,7 +61,7 @@ class Mailer():
             try:
                 self.imap.login(self.account, self.passwd)
             except Exception as e:
-                print(e)
+                logger.error(e)
                 return False
             self.imap.list()
             self.imap.select('inbox')
@@ -108,6 +108,7 @@ class Mailer():
             if part.get_content_type() == "text/plain":
                     body = part.get_payload(decode=True)
                     message = "{0}\n{1}\n".format(header, body.decode('utf-8', errors='ignore'))
+                    logger.info("MESSAGE: {0}".format(message))
                     self.post_email(message)
 
     def post_email(self, message):
@@ -124,19 +125,19 @@ class Mailer():
             self.connect_smtp()
 
         except Exception as e:
-            print("Unexpected error: ", e)
+            logger.error("Unexpected error: " + str(e))
             raise
 
         self.smtp.send_message(msg=msg, from_addr=self.account, to_addrs=self.toaddr)
 
     def run(self):
         if len(self.uids) == 0:
+            logger.warning("Not unseen emails")
             return "Not unseen emails"
         for f in self.uids:
             data = self.get_email_data(f)
             header = self.get_email_header_details(data)
             self.get_body_and_send(data,header)
-
 
     def close_smtp(self):
         self.smtp.close()
@@ -145,4 +146,5 @@ if __name__ == '__main__':
     #m = Mailer("", "", "")
     #m.connect_smtp()
 
-    c = MailerSettings("config.xml")
+    c = Mailer("config.xml")
+    c.run()
