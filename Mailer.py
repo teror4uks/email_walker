@@ -141,6 +141,9 @@ class Mailer(MailerSettings):
         self.smtp.send_message(msg=msg, from_addr=self.account, to_addrs=self.toaddr)
 
     def run(self):
+        if self.uids is False:
+            logger.error("imap or smtp servers return error")
+            raise BaseException("imap or smtp servers return error")
         if len(self.uids) == 0:
             logger.warning("Not unseen emails")
             return "Not unseen emails"
